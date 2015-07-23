@@ -44,10 +44,20 @@ if(! -e $xmlconf)
 	our $mobUtil = new Mobiusutil();  
 	our $log;
 	our $dbHandler;	
-    our @updatetypes = ('sagenewitems','newitems','recentreturned','last14daytopcirc','newyoungadult','newkids');
+    our @updatetypes =
+    ('sagenewitems','sagenewyoungadult','sagenewkids','sagerecentreturned','sagelast14daytopcirc',
+    'newitems','recentreturned','last14daytopcirc','newyoungadult','newkids');
 
-  # These are the 6 types:
+  # These are the 10 types:
+  
+   ## Scoped to the entire consortium ##
   # Newly cataloged items in SAGE (regardless of age of bib)    (sagenewitems)
+  # Newly cataloged YA items in SAGE (based on shelving loc)	(sagenewyoungadult)
+  # Newly cataloged Kids items in SAGE (based on shelving loc)  (sagenewkids)
+  # Recently returned in Sage (last 100 items returned)        	(sagerecentreturned)
+  # Last 14 days, top 100 circulated titles in SAGE		(sagelast14daytopcirc)
+  
+   ## Scoped to the list owner's library ##
   # Newly cataloged items by list member OU.			(newitems)
   # Newly cataloged YA items (based on shelving loc)    	(newyoungadult)
   # Newly cataloged Kids items (based on shelving loc)  	(newkids)
