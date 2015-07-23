@@ -81,25 +81,41 @@ foreach(@results)
 	my $des=@row[2];
 	my $ous = getOUs($scope);
 	my $inserts="";
-	if($des eq 'newitems')
+	if($des eq 'sagenewitems')
+	{
+		$inserts = updatebagSageNewItems($bucketID,$ous);
+	}
+	elsif($des eq 'newitems')
 	{
 		$inserts = updatebagNewItems($bucketID,$ous);
 	}
-	elsif($des eq 'sagenewitems')
+	elsif($des eq 'sagerecentreturned')
 	{
-		$inserts = updatebagSageNewItems($bucketID,$ous);
+		$inserts = updatebagSageRecentReturned($bucketID,$ous);
 	}
 	elsif($des eq 'recentreturned')
 	{
 		$inserts = updatebagRecentReturned($bucketID,$ous);
 	}
+	elsif($des eq 'sagenewyoungadult')
+	{
+		$inserts = updatebagSageNewYoungAdultItems($bucketID,$ous);
+	}
 	elsif($des eq 'newyoungadult')
 	{
 		$inserts = updatebagNewYoungAdultItems($bucketID,$ous);
 	}
+	elsif($des eq 'sagenewkids')
+	{
+		$inserts = updatebagSageNewKidsItems($bucketID,$ous);
+	}
 	elsif($des eq 'newkids')
 	{
 		$inserts = updatebagNewKidsItems($bucketID,$ous);
+	}
+	elsif($des eq 'sagelast14daytopcirc')
+	{
+		$inserts = updatebagSage14daytopcirc($bucketID,$ous);				
 	}
 	elsif($des eq 'last14daytopcirc')
 	{
@@ -122,7 +138,8 @@ foreach(@results)
 
 
 $log->addLogLine(" ---------------- Script End ---------------- ");	
-	
+
+## Sage Top 100 New Items ##	
 sub updatebagSageNewItems
 {
 	my $id = @_[0];
@@ -169,6 +186,7 @@ LIMIT 100
 	return $inserts;
 }
 
+## Scoped Top 100 New Items ##
 sub updatebagNewItems
 {
   my $id = @_[0];
@@ -215,6 +233,45 @@ LIMIT 100
   return $inserts;
 }
 
+## Sage Top 100 Recent Returned ##
+sub updatebagSageRecentReturned
+{
+	my $id = @_[0];
+	my $ous = @_[1];
+	my $query = "
+	SELECT DISTINCT \"REC\" FROM
+(
+SELECT (SELECT RECORD FROM ASSET.CALL_NUMBER WHERE RECORD>0 AND RECORD IS NOT NULL AND 
+ID=(SELECT CALL_NUMBER FROM ASSET.COPY WHERE ID=A.TARGET_COPY
+AND LOCATION IN(SELECT ID FROM ASSET.COPY_LOCATION WHERE OPAC_VISIBLE AND HOLDABLE AND 
+CIRCULATE) AND OPAC_VISIBLE AND HOLDABLE AND CIRCULATE AND ID != -1::BIGINT
+)) \"REC\",
+CHECKIN_SCAN_TIME::DATE FROM ACTION.CIRCULATION  A 
+WHERE CHECKIN_SCAN_TIME IS NOT NULL AND
+TARGET_COPY IN(SELECT ID FROM ASSET.COPY WHERE CALL_NUMBER IN(SELECT ID FROM ASSET.CALL_NUMBER WHERE RECORD>0 AND 
+RECORD IS NOT NULL))
+ORDER BY 
+CHECKIN_SCAN_TIME::DATE DESC LIMIT 200
+) AS B 
+ORDER BY \"REC\" DESC
+LIMIT 100";
+
+	$log->addLine($query);
+	my @results = @{$dbHandler->query($query)};	
+	my $inserts = "";
+	foreach(@results)
+	{
+		my $row = $_;
+		my @row = @{$row};
+		if(length($mobUtil->trim(@row[0])) >0)
+		{
+			$inserts.="($id,".@row[0]."),";		
+		}
+	}
+	return $inserts;
+}
+
+## Scoped Top 100 Recent Returned **
 sub updatebagRecentReturned
 {
 	my $id = @_[0];
@@ -253,6 +310,50 @@ LIMIT 100";
 	return $inserts;
 }
 
+## Sage Top 100 New YA Items ##
+sub updatebagSageNewYoungAdultItems
+{
+  my $id = @_[0];
+  my $ous = @_[1];
+  my $query = "
+SELECT * FROM
+(
+ SELECT DISTINCT \"REC\",
+ (SELECT MAX(CREATE_DATE::DATE) FROM ASSET.COPY WHERE CALL_NUMBER = (SELECT MAX(ID) FROM ASSET.CALL_NUMBER WHERE 
+RECORD=\"REC\")) \"THEDATE\"
+
+  FROM
+(
+SELECT (SELECT RECORD FROM ASSET.CALL_NUMBER WHERE ID=A.CALL_NUMBER AND RECORD>0 AND RECORD IS NOT NULL) 
+\"REC\",CREATE_DATE::DATE FROM ASSET.COPY  A 
+WHERE LOCATION IN(SELECT ID FROM ASSET.COPY_LOCATION WHERE OPAC_VISIBLE AND HOLDABLE AND 
+CIRCULATE and NAME SIMILAR TO '%(YA|Young Adult|YOUNG ADULT)%') AND OPAC_VISIBLE AND HOLDABLE AND
+CIRCULATE AND ID != -1::BIGINT
+ORDER BY
+CREATE_DATE::DATE DESC LIMIT 300
+) AS B
+) AS C
+where C.\"THEDATE\" IS NOT NULL
+ORDER BY C.\"THEDATE\" DESC
+LIMIT 100
+";
+
+  $log->addLine($query);
+  my @results = @{$dbHandler->query($query)};
+  my $inserts = "";
+  foreach(@results)
+  {
+    my $row = $_;
+    my @row = @{$row};
+    if(length($mobUtil->trim(@row[0])) >0)
+    {
+      $inserts.="($id,".@row[0]."),";
+    }
+  }
+  return $inserts;
+}
+
+## Scoped Top 100 New YA Items ##
 sub updatebagNewYoungAdultItems
 {
   my $id = @_[0];
@@ -297,6 +398,54 @@ LIMIT 100
   return $inserts;
 }
 
+## Sage Top 100 New Kids Items ##
+sub updatebagSageNewKidsItems
+{
+  my $id = @_[0];
+  my $ous = @_[1];
+  my $query = "
+SELECT * FROM
+(
+ SELECT DISTINCT \"REC\",
+ (SELECT MAX(CREATE_DATE::DATE) FROM ASSET.COPY WHERE CALL_NUMBER = (SELECT MAX(ID) FROM ASSET.CALL_NUMBER WHERE 
+RECORD=\"REC\")) \"THEDATE\"
+
+  FROM
+(
+SELECT (SELECT RECORD FROM ASSET.CALL_NUMBER WHERE ID=A.CALL_NUMBER AND RECORD>0 AND RECORD IS NOT NULL) 
+\"REC\",CREATE_DATE::DATE FROM ASSET.COPY A
+WHERE LOCATION IN(SELECT ID FROM ASSET.COPY_LOCATION WHERE
+NAME SIMILAR TO '%(Children|CHILDREN|JUV|JUVENILE|Juvenile|YOUTH|Youth)%' 
+AND NAME NOT IN ('Juvenile Magazines','CHILDREN''S MAGAZINES','MAGAZINES','Magazines') 
+AND 
+OPAC_VISIBLE) 
+AND 
+OPAC_VISIBLE AND HOLDABLE AND CIRCULATE AND ID != -1::BIGINT
+ORDER BY
+CREATE_DATE::DATE DESC LIMIT 300
+) AS B
+) AS C
+where C.\"THEDATE\" IS NOT NULL
+ORDER BY C.\"THEDATE\" DESC
+LIMIT 100
+";
+
+  $log->addLine($query);
+  my @results = @{$dbHandler->query($query)};
+  my $inserts = "";
+  foreach(@results)
+  {
+    my $row = $_;
+    my @row = @{$row};
+    if(length($mobUtil->trim(@row[0])) >0)
+    {
+      $inserts.="($id,".@row[0]."),";
+    }
+  }
+  return $inserts;
+}
+
+## Scoped Top 100 New Kids Items ##
 sub updatebagNewKidsItems
 {
   my $id = @_[0];
@@ -345,6 +494,44 @@ LIMIT 100
   return $inserts;
 }
 
+## Sage Top Circs in Last 2 Weeks (Limit 100) ##
+sub updatebagSage14daytopcirc
+{
+	my $id = @_[0];
+	my $ous = @_[1];
+	my $query = "
+	 SELECT DISTINCT \"REC\",COUNT(*) FROM
+ (
+SELECT (SELECT RECORD FROM ASSET.CALL_NUMBER WHERE ID=(SELECT CALL_NUMBER FROM ASSET.COPY WHERE ID=A.TARGET_COPY) 
+AND RECORD>0 AND RECORD IS NOT NULL) \"REC\"
+,XACT_START::DATE 
+FROM ACTION.CIRCULATION  A 
+WHERE 
+(TARGET_COPY IN(SELECT ID FROM ASSET.COPY WHERE LOCATION IN(SELECT ID FROM ASSET.COPY_LOCATION WHERE 
+NAME NOT SIMILAR TO '%(Magazines|MAGAZINES|PERIODICALS|ADULT MAGAZINES|CHILDREN''S MAGAZINES|ADULTOS ESPANOL REVISTAS)%'
+AND OPAC_VISIBLE AND HOLDABLE AND CIRCULATE) AND OPAC_VISIBLE AND HOLDABLE AND CIRCULATE AND ID != -1::BIGINT)) AND
+XACT_START > NOW() - \$\$14 DAYS\$\$::INTERVAL
+) AS B 
+GROUP BY \"REC\"
+ORDER BY COUNT(*) DESC
+LIMIT 100
+";
+
+	$log->addLine($query);
+	my @results = @{$dbHandler->query($query)};	
+	my $inserts = "";
+	foreach(@results)
+	{
+		my $row = $_;
+		my @row = @{$row};
+		if(length($mobUtil->trim(@row[0])) >0)
+		{
+			$inserts.="($id,".@row[0]."),";		
+		}
+	}
+	return $inserts;
+}
+## Scoped Top Circs in Last 2 Weeks (Limit 100) ##
 sub updatebag14daytopcirc
 {
 	my $id = @_[0];
@@ -359,8 +546,7 @@ FROM ACTION.CIRCULATION  A
 WHERE CIRC_LIB IN($ous) AND 
 (TARGET_COPY IN(SELECT ID FROM ASSET.COPY WHERE LOCATION IN(SELECT ID FROM ASSET.COPY_LOCATION WHERE OWNING_LIB 
 IN($ous)
-AND NAME NOT SIMILAR TO '%(Magazines|MAGAZINES|PERIODICALS|ADULT MAGAZINES|CHILDREN''S MAGAZINES|ADULTOS ESPANOL 
-REVISTAS)%'
+AND NAME NOT SIMILAR TO '%(Magazines|MAGAZINES|PERIODICALS|ADULT MAGAZINES|CHILDREN''S MAGAZINES|ADULTOS ESPANOL REVISTAS)%'
 AND OPAC_VISIBLE AND HOLDABLE AND CIRCULATE) AND OPAC_VISIBLE AND HOLDABLE AND CIRCULATE AND ID != -1::BIGINT)) AND
 XACT_START > NOW() - \$\$14 DAYS\$\$::INTERVAL
 ) AS B 
