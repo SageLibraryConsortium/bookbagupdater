@@ -54,7 +54,7 @@ if(! -e $xmlconf)
   # Newly cataloged items in SAGE (regardless of age of bib)    (sagenewitems)
   # Newly cataloged YA items in SAGE (based on shelving loc)	(sagenewyoungadult)
   # Newly cataloged Kids items in SAGE (based on shelving loc)  (sagenewkids)
-  # Recently returned in Sage (last 100 items returned)        	(sagerecentreturned)
+  # Recently returned in SAGE (last 100 items returned)        	(sagerecentreturned)
   # Last 14 days, top 100 circulated titles in SAGE		(sagelast14daytopcirc)
   
    ## Scoped to the list owner's library ##
