@@ -63,6 +63,7 @@ if(! -e $xmlconf)
   # Newly cataloged Kids items (based on shelving loc)  	(newkids)
   # Recently returned (last 100 items returned)        		(recentreturned)
   # Last 14 days, top 100 circulated titles			(last14daytopcirc)
+  # Last 90 days, top 100 circulated titles			(last90daytopcirc)
 	
 my $dt = DateTime->now(time_zone => "local"); 
 my $fdate = $dt->ymd; 
@@ -130,6 +131,10 @@ foreach(@results)
 	elsif($des eq 'last14daytopcirc')
 	{
 		$inserts = updatebag14daytopcirc($bucketID,$ous);				
+	}
+	elsif($des eq 'last90daytopcirc')
+	{
+		$inserts = updatebag90daytopcirc($bucketID,$ous);
 	}
 	if(length($inserts) > 0)
 	{
@@ -579,7 +584,44 @@ LIMIT 100
 	}
 	return $inserts;
 }
+## Scoped Top Circs in Last 4 Months (Limit 100) ##
+sub updatebag90daytopcirc
+{
+	my $id = @_[0];
+	my $ous = @_[1];
+	my $query = "
+	 SELECT DISTINCT \"REC\",COUNT(*) FROM
+ (
+SELECT (SELECT RECORD FROM ASSET.CALL_NUMBER WHERE ID=(SELECT CALL_NUMBER FROM ASSET.COPY WHERE ID=A.TARGET_COPY) 
+AND RECORD>0 AND RECORD IS NOT NULL) \"REC\"
+,XACT_START::DATE 
+FROM ACTION.CIRCULATION  A 
+WHERE CIRC_LIB IN($ous) AND 
+(TARGET_COPY IN(SELECT ID FROM ASSET.COPY WHERE LOCATION IN(SELECT ID FROM ASSET.COPY_LOCATION WHERE OWNING_LIB 
+IN($ous)
+AND NAME NOT SIMILAR TO '%(Magazines|MAGAZINES|PERIODICALS|ADULT MAGAZINES|CHILDREN''S MAGAZINES|ADULTOS ESPANOL REVISTAS)%'
+AND OPAC_VISIBLE AND HOLDABLE AND CIRCULATE) AND OPAC_VISIBLE AND HOLDABLE AND CIRCULATE AND ID != -1::BIGINT)) AND
+XACT_START > NOW() - \$\$90 DAYS\$\$::INTERVAL
+) AS B 
+GROUP BY \"REC\"
+ORDER BY COUNT(*) DESC
+LIMIT 100
+";
 
+	$log->addLine($query);
+	my @results = @{$dbHandler->query($query)};	
+	my $inserts = "";
+	foreach(@results)
+	{
+		my $row = $_;
+		my @row = @{$row};
+		if(length($mobUtil->trim(@row[0])) >0)
+		{
+			$inserts.="($id,".@row[0]."),";		
+		}
+	}
+	return $inserts;
+}
 sub getOUs
 {
 	my $ret = '';
