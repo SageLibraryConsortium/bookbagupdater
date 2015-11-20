@@ -46,7 +46,7 @@ if(! -e $xmlconf)
 	our $dbHandler;	
     our @updatetypes =
     ('sagenewitems','sagenewyoungadult','sagenewkids','sagerecentreturned','sagelast14daytopcirc',
-    'newitems','recentreturned','last14daytopcirc','newyoungadult','newkids');
+    'newitems','recentreturned','last14daytopcirc','last90daytopcirc','newyoungadult','newkids');
 
   # These are the 10 types:
   
