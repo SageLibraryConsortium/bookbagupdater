@@ -64,6 +64,8 @@ if(! -e $xmlconf)
   # Recently returned (last 100 items returned)        		(recentreturned)
   # Last 14 days, top 100 circulated titles			(last14daytopcirc)
   # Last 90 days, top 100 circulated titles			(last90daytopcirc)
+  # Last 90 days, top 100 circulated DVD titles			(last90daytopcircdvd)
+  # Last 90 days, top 100 circulated titles (NO DVDs)		(last90daytopcircnodvd)
 	
 my $dt = DateTime->now(time_zone => "local"); 
 my $fdate = $dt->ymd; 
@@ -135,6 +137,14 @@ foreach(@results)
 	elsif($des eq 'last90daytopcirc')
 	{
 		$inserts = updatebag90daytopcirc($bucketID,$ous);
+	}
+	elsif($des eq 'last90daytopcircdvd')
+	{
+		$inserts = updatebag90daytopcircdvd($bucketID,$ous);
+	}
+	elsif($des eq 'last90daytopcircnodvd')
+	{
+		$inserts = updatebag90daytopcircnodvd($bucketID,$ous);
 	}
 	if(length($inserts) > 0)
 	{
@@ -573,7 +583,107 @@ LIMIT 100
 	}
 	return $inserts;
 }
-## Scoped Top Circs in Last 2 Weeks (Limit 100) ##
+## Scoped Top DVD Circs in Last 4 Months (Limit 100) ##
+sub updatebag90daytopcircdvd
+{
+	my $id = @_[0];
+	my $ous = @_[1];
+	my $query = "
+	 SELECT DISTINCT \"REC\",COUNT(*) FROM
+ (
+SELECT (SELECT RECORD FROM ASSET.CALL_NUMBER WHERE ID=(SELECT CALL_NUMBER FROM ASSET.COPY WHERE ID=A.TARGET_COPY) 
+AND RECORD>0 AND RECORD IS NOT NULL) \"REC\"
+,XACT_START::DATE 
+FROM ACTION.CIRCULATION  A 
+WHERE CIRC_LIB IN($ous) AND 
+(TARGET_COPY IN(SELECT ID FROM ASSET.COPY WHERE LOCATION IN(SELECT ID FROM ASSET.COPY_LOCATION WHERE OWNING_LIB 
+IN($ous)
+AND NAME SIMILAR TO '%(DVD)%'
+AND (TARGET_COPY IN(SELECT ID FROM ASSET.COPY WHERE LOCATION IN(SELECT ID FROM ASSET.COPY_LOCATION WHERE OWNING_LIB IN($ous) AND OPAC_VISIBLE AND HOLDABLE AND CIRCULATE) AND OPAC_VISIBLE AND HOLDABLE AND CIRCULATE AND ID != -1::BIGINT
+-- REMOVE SERIALS
+AND CALL_NUMBER IN(
+SELECT ID FROM ASSET.CALL_NUMBER WHERE RECORD
+IN(SELECT ID FROM BIBLIO.RECORD_ENTRY WHERE 
+	ID IN(SELECT RECORD FROM ASSET.CALL_NUMBER WHERE OWNING_LIB IN($ous))
+	AND
+	marc !~ \$\$<leader>.......[bs]\$\$
+)
+)
+
+)) AND
+XACT_START > NOW() - \$\$90 DAYS\$\$::INTERVAL
+) AS B 
+GROUP BY \"REC\"
+ORDER BY COUNT(*) DESC
+LIMIT 100
+";
+
+	$log->addLine($query);
+	my @results = @{$dbHandler->query($query)};	
+	my $inserts = "";
+	foreach(@results)
+	{
+		my $row = $_;
+		my @row = @{$row};
+		if(length($mobUtil->trim(@row[0])) >0)
+		{
+			$inserts.="($id,".@row[0]."),";		
+		}
+	}
+	return $inserts;
+}
+
+## Scoped Top Circs in Last 4 Months (Limit 100 & NO Movies) ##
+sub updatebag90daytopcircnodvd
+{
+	my $id = @_[0];
+	my $ous = @_[1];
+	my $query = "
+	 SELECT DISTINCT \"REC\",COUNT(*) FROM
+ (
+SELECT (SELECT RECORD FROM ASSET.CALL_NUMBER WHERE ID=(SELECT CALL_NUMBER FROM ASSET.COPY WHERE ID=A.TARGET_COPY) 
+AND RECORD>0 AND RECORD IS NOT NULL) \"REC\"
+,XACT_START::DATE 
+FROM ACTION.CIRCULATION  A 
+WHERE CIRC_LIB IN($ous) AND 
+(TARGET_COPY IN(SELECT ID FROM ASSET.COPY WHERE LOCATION IN(SELECT ID FROM ASSET.COPY_LOCATION WHERE OWNING_LIB 
+IN($ous)
+AND NAME NOT SIMILAR TO '%(Magazines|MAGAZINES|PERIODICALS|ADULT MAGAZINES|CHILDREN''S MAGAZINES|ADULTOS ESPANOL REVISTAS|DVD|Video)%'
+AND (TARGET_COPY IN(SELECT ID FROM ASSET.COPY WHERE LOCATION IN(SELECT ID FROM ASSET.COPY_LOCATION WHERE OWNING_LIB IN($ous) AND OPAC_VISIBLE AND HOLDABLE AND CIRCULATE) AND OPAC_VISIBLE AND HOLDABLE AND CIRCULATE AND ID != -1::BIGINT
+-- REMOVE SERIALS
+AND CALL_NUMBER IN(
+SELECT ID FROM ASSET.CALL_NUMBER WHERE RECORD
+IN(SELECT ID FROM BIBLIO.RECORD_ENTRY WHERE 
+	ID IN(SELECT RECORD FROM ASSET.CALL_NUMBER WHERE OWNING_LIB IN($ous))
+	AND
+	marc !~ \$\$<leader>.......[bs]\$\$
+)
+)
+
+)) AND
+XACT_START > NOW() - \$\$90 DAYS\$\$::INTERVAL
+) AS B 
+GROUP BY \"REC\"
+ORDER BY COUNT(*) DESC
+LIMIT 100
+";
+
+	$log->addLine($query);
+	my @results = @{$dbHandler->query($query)};	
+	my $inserts = "";
+	foreach(@results)
+	{
+		my $row = $_;
+		my @row = @{$row};
+		if(length($mobUtil->trim(@row[0])) >0)
+		{
+			$inserts.="($id,".@row[0]."),";		
+		}
+	}
+	return $inserts;
+}
+
+## General Scoped Top Circs in Last 2 Weeks (Limit 100) ##
 sub updatebag14daytopcirc
 {
 	my $id = @_[0];
@@ -622,7 +732,7 @@ LIMIT 100
 	}
 	return $inserts;
 }
-## Scoped Top Circs in Last 4 Months (Limit 100) ##
+## General Scoped Top Circs in Last 4 Months (Limit 100) ##
 sub updatebag90daytopcirc
 {
 	my $id = @_[0];
