@@ -49,24 +49,24 @@ if(! -e $xmlconf)
     
 'newitems','recentreturned','last14daytopcirc','last90daytopcirc','last90daytopcircdvd','last90daytopcircnodvd','newyoungadult','newkids');
 
-  # These are the 10 types:
+  # These are the 13 types:
   
    ## Scoped to the entire consortium ##
   # Newly cataloged items in SAGE (regardless of age of bib)    (sagenewitems)
-  # Newly cataloged YA items in SAGE (based on shelving loc)  (sagenewyoungadult)
+  # Newly cataloged YA items in SAGE (based on shelving loc)    (sagenewyoungadult)
   # Newly cataloged Kids items in SAGE (based on shelving loc)  (sagenewkids)
   # Recently returned in SAGE (last 100 items returned)         (sagerecentreturned)
-  # Last 14 days, top 100 circulated titles in SAGE   (sagelast14daytopcirc)
+  # Last 14 days, top 100 circulated titles in SAGE             (sagelast14daytopcirc)
   
    ## Scoped to the list owner's library ##
-  # Newly cataloged items by list member OU.      (newitems)
+  # Newly cataloged items by list member OU.              (newitems)
   # Newly cataloged YA items (based on shelving loc)      (newyoungadult)
   # Newly cataloged Kids items (based on shelving loc)    (newkids)
   # Recently returned (last 100 items returned)           (recentreturned)
-  # Last 14 days, top 100 circulated titles     (last14daytopcirc)
-  # Last 90 days, top 100 circulated titles     (last90daytopcirc)
-  # Last 90 days, top 100 circulated titles DVD (last90daytopcircdvd)
-  # Last 90 days, top 100 circulated titles NO DVD  (last90daytopcircnodvd)
+  # Last 14 days, top 100 circulated titles               (last14daytopcirc)
+  # Last 90 days, top 100 circulated titles               (last90daytopcirc)
+  # Last 90 days, top 100 circulated titles Vid Only      (last90daytopcircdvd)
+  # Last 90 days, top 100 circulated titles NO DVD        (last90daytopcircnodvd)
   
 my $dt = DateTime->now(time_zone => "local"); 
 my $fdate = $dt->ymd; 
