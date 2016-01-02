@@ -45,9 +45,8 @@ if(! -e $xmlconf)
   our $log;
   our $dbHandler; 
     our @updatetypes =
-    ('sagenewitems','sagenewyoungadult','sagenewkids','sagerecentreturned','sagelast14daytopcirc',
-    
-'newitems','recentreturned','last14daytopcirc','last90daytopcirc','last90daytopcircdvd','last90daytopcircnodvd','newyoungadult','newkids');
+    ('sagenewitems','sagenewyoungadult','sagenewkids','sagerecentreturned','sagelast14daytopcirc','sagenewaudiobooks',
+    'newitems','newdvds','recentreturned','last14daytopcirc','last90daytopcirc','last90daytopcircdvd','last90daytopcircnodvd','newyoungadult','newkids');
 
   # These are the 13 types:
   
@@ -57,6 +56,8 @@ if(! -e $xmlconf)
   # Newly cataloged Kids items in SAGE (based on shelving loc)  (sagenewkids)
   # Recently returned in SAGE (last 100 items returned)         (sagerecentreturned)
   # Last 14 days, top 100 circulated titles in SAGE             (sagelast14daytopcirc)
+  # Recent Added DVD/BluRay/DVD Box Set                         (sagenewdvds)
+  # Recent Added Audiobook CDs                                  (sagenewaudiobooks)
   
    ## Scoped to the list owner's library ##
   # Newly cataloged items by list member OU.              (newitems)
@@ -115,6 +116,14 @@ foreach(@results)
   {
     $inserts = updatebagSageNewYoungAdultItems($bucketID,$ous);
   }
+  elsif($des eq 'sagenewdvds')
+  {
+    $inserts = updatebagSageNewDVDs($bucketID,$ous);
+    
+  elsif($des eq 'sagenewaudiobooks')
+  {
+    $inserts = updatebagSageNewAudioBooks($bucketID,$ous);
+  
   elsif($des eq 'newyoungadult')
   {
     $inserts = updatebagNewYoungAdultItems($bucketID,$ous);
@@ -353,6 +362,90 @@ SELECT (SELECT RECORD FROM ASSET.CALL_NUMBER WHERE ID=A.CALL_NUMBER AND RECORD>0
 \"REC\",CREATE_DATE::DATE FROM ASSET.COPY  A 
 WHERE LOCATION IN(SELECT ID FROM ASSET.COPY_LOCATION WHERE OPAC_VISIBLE AND HOLDABLE AND 
 CIRCULATE and NAME SIMILAR TO '%(YA|Young Adult|YOUNG ADULT)%') AND OPAC_VISIBLE AND HOLDABLE AND
+CIRCULATE AND ID != -1::BIGINT
+ORDER BY
+CREATE_DATE::DATE DESC LIMIT 300
+) AS B
+) AS C
+where C.\"THEDATE\" IS NOT NULL
+ORDER BY C.\"THEDATE\" DESC
+LIMIT 100
+";
+
+  $log->addLine($query);
+  my @results = @{$dbHandler->query($query)};
+  my $inserts = "";
+  foreach(@results)
+  {
+    my $row = $_;
+    my @row = @{$row};
+    if(length($mobUtil->trim(@row[0])) >0)
+    {
+      $inserts.="($id,".@row[0]."),";
+    }
+  }
+  return $inserts;
+}
+
+## Sage Newest 100 DVD/BluRay ##
+sub updatebagSageNewDVDs
+{
+  my $id = @_[0];
+  my $ous = @_[1];
+  my $query = "
+SELECT * FROM
+(
+ SELECT DISTINCT \"REC\",
+ (SELECT MAX(CREATE_DATE::DATE) FROM ASSET.COPY WHERE CALL_NUMBER = (SELECT MAX(ID) FROM ASSET.CALL_NUMBER WHERE 
+RECORD=\"REC\")) \"THEDATE\"
+
+  FROM
+(
+SELECT (SELECT RECORD FROM ASSET.CALL_NUMBER WHERE ID=A.CALL_NUMBER AND RECORD>0 AND RECORD IS NOT NULL) 
+\"REC\",CREATE_DATE::DATE FROM ASSET.COPY  A 
+WHERE circ_modifier IN '%(DVD|Bluray|DVD Box Set)%' AND OPAC_VISIBLE AND HOLDABLE AND
+CIRCULATE AND ID != -1::BIGINT
+ORDER BY
+CREATE_DATE::DATE DESC LIMIT 300
+) AS B
+) AS C
+where C.\"THEDATE\" IS NOT NULL
+ORDER BY C.\"THEDATE\" DESC
+LIMIT 100
+";
+
+  $log->addLine($query);
+  my @results = @{$dbHandler->query($query)};
+  my $inserts = "";
+  foreach(@results)
+  {
+    my $row = $_;
+    my @row = @{$row};
+    if(length($mobUtil->trim(@row[0])) >0)
+    {
+      $inserts.="($id,".@row[0]."),";
+    }
+  }
+  return $inserts;
+}
+
+## Sage Newest 100 Audiobook CDs ##
+sub updatebagSageNewAudiobooks
+{
+  my $id = @_[0];
+  my $ous = @_[1];
+  my $query = "
+SELECT * FROM
+(
+ SELECT DISTINCT \"REC\",
+ (SELECT MAX(CREATE_DATE::DATE) FROM ASSET.COPY WHERE CALL_NUMBER = (SELECT MAX(ID) FROM ASSET.CALL_NUMBER WHERE 
+RECORD=\"REC\")) \"THEDATE\"
+
+  FROM
+(
+SELECT (SELECT RECORD FROM ASSET.CALL_NUMBER WHERE ID=A.CALL_NUMBER AND RECORD>0 AND RECORD IS NOT NULL) 
+\"REC\",CREATE_DATE::DATE FROM ASSET.COPY  A 
+WHERE circ_modifier IN 'Audiobook CD' AND OPAC_VISIBLE AND HOLDABLE AND
 CIRCULATE AND ID != -1::BIGINT
 ORDER BY
 CREATE_DATE::DATE DESC LIMIT 300
