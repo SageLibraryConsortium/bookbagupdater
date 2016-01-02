@@ -1,13 +1,1 @@
-# Ignore Most Everything for Slider Project
-#conf/
-#include/
-#lib/
-#man/
-#share/
-#var/
-*
-
 .gitignore
-!var/templates_sage/opac/parts/book_carousel.tt2
-!var/templates_sage/opac/parts/homesearch.tt2
-!var/web/opac/skin/default/js/carousel*
