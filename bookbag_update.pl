@@ -45,8 +45,9 @@ if(! -e $xmlconf)
   our $log;
   our $dbHandler; 
     our @updatetypes =
-    ('sagenewitems','sagenewyoungadult','sagenewkids','sagerecentreturned','sagelast14daytopcirc','sagenewaudiobooks',
-    'newitems','newdvds','recentreturned','last14daytopcirc','last90daytopcirc','last90daytopcircdvd','last90daytopcircnodvd','newyoungadult','newkids');
+    
+('sagenewitems','sagenewyoungadult','sagenewkids','sagerecentreturned','sagelast14daytopcirc','sagenewdvds','sagenewaudiobooks',
+    'newitems','recentreturned','last14daytopcirc','last90daytopcirc','last90daytopcircdvd','last90daytopcircnodvd','newyoungadult','newkids');
 
   # These are the 13 types:
   
@@ -119,11 +120,11 @@ foreach(@results)
   elsif($des eq 'sagenewdvds')
   {
     $inserts = updatebagSageNewDVDs($bucketID,$ous);
-    
+  }  
   elsif($des eq 'sagenewaudiobooks')
   {
-    $inserts = updatebagSageNewAudioBooks($bucketID,$ous);
-  
+    $inserts = updatebagSageNewAudiobooks($bucketID,$ous);
+  }
   elsif($des eq 'newyoungadult')
   {
     $inserts = updatebagNewYoungAdultItems($bucketID,$ous);
@@ -403,7 +404,7 @@ RECORD=\"REC\")) \"THEDATE\"
 (
 SELECT (SELECT RECORD FROM ASSET.CALL_NUMBER WHERE ID=A.CALL_NUMBER AND RECORD>0 AND RECORD IS NOT NULL) 
 \"REC\",CREATE_DATE::DATE FROM ASSET.COPY  A 
-WHERE circ_modifier IN '%(DVD|Bluray|DVD Box Set)%' AND OPAC_VISIBLE AND HOLDABLE AND
+WHERE circ_modifier SIMILAR TO '(DVD|Bluray|DVD Box Set)' AND OPAC_VISIBLE AND HOLDABLE AND
 CIRCULATE AND ID != -1::BIGINT
 ORDER BY
 CREATE_DATE::DATE DESC LIMIT 300
@@ -445,7 +446,7 @@ RECORD=\"REC\")) \"THEDATE\"
 (
 SELECT (SELECT RECORD FROM ASSET.CALL_NUMBER WHERE ID=A.CALL_NUMBER AND RECORD>0 AND RECORD IS NOT NULL) 
 \"REC\",CREATE_DATE::DATE FROM ASSET.COPY  A 
-WHERE circ_modifier IN 'Audiobook CD' AND OPAC_VISIBLE AND HOLDABLE AND
+WHERE circ_modifier IN ('Audiobook CD') AND OPAC_VISIBLE AND HOLDABLE AND
 CIRCULATE AND ID != -1::BIGINT
 ORDER BY
 CREATE_DATE::DATE DESC LIMIT 300
