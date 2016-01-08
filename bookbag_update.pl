@@ -49,7 +49,7 @@ if(! -e $xmlconf)
 ('sagenewitems','sagenewyoungadult','sagenewkids','sagerecentreturned','sagelast14daytopcirc','sagenewdvds','sagenewaudiobooks','sagenewlp',
     'newitems','recentreturned','last14daytopcirc','last90daytopcirc','last90daytopcircdvd','last90daytopcircnodvd','newyoungadult','newkids');
 
-  # These are the 13 types:
+  # These are the types:
   
    ## Scoped to the entire consortium ##
   # Newly cataloged items in SAGE (regardless of age of bib)    (sagenewitems)
